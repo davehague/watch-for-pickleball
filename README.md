@@ -74,3 +74,7 @@ The script performs the following steps:
 2. Checks for new events by comparing the fetched events with previously stored events.
 3. Sends an email notification if new events are found.
 4. Stores the new events in a JSON file to avoid duplicate notifications.
+
+## Scheduling (Windows)
+1. Set the environment variable `WATCH_PB_PROJECT_DIR` to the location of this project.
+2. Create a new task in Task Scheduler. Set Actions -> Program/Script to the `.bat` file in the root of this project.
