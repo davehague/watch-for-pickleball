@@ -92,10 +92,13 @@ def check_for_new_events():
         send_email(new_unique_events)
         with open(EVENTS_FILE, 'w') as file:
             json.dump(stored_events + new_unique_events, file)
+    else:
+        print ("No new events found, skipping email notification")
 
 
 # Send an email notification
 def send_email(events):
+    print("Found new events, sending an email notification")
     subject = "New Pickleball Events Posted at " + PICKLEBALL_LOCATION
     body = "\n".join([f"{event['title']} on {event['date']} at {event['time']}" for event in events])
 
@@ -110,6 +113,7 @@ def send_email(events):
     server.login(EMAIL, PASSWORD)
     text = msg.as_string()
     server.sendmail(EMAIL, RECIPIENT_EMAIL, text)
+    print ("Email sent successfully")
     server.quit()
 
 
