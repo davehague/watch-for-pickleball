@@ -1,26 +1,14 @@
 import os
 import json
-import smtplib
 import time
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
+from emailing import send_email
 
-load_dotenv()
-URL = os.getenv('URL')
-EMAIL = os.getenv('EMAIL')
-PASSWORD = os.getenv('PASSWORD')
-RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL')
-EVENTS_FILE = 'events.json'
-PICKLEBALL_LOCATION = os.getenv('PICKLEBALL_LOCATION')
-
-
-# Setup Selenium WebDriver
 def setup_driver():
     print ("Setting up the chrome webdriver")
     chrome_options = Options()
@@ -33,10 +21,9 @@ def setup_driver():
 
 
 # Fetch and parse the webpage content using Selenium
-def fetch_events():
-    driver = setup_driver()
+def get_active_community_events(driver, url):
     print ("Fetching the webpage content")
-    driver.get(URL)
+    driver.get(url)
 
     # Wait for the page to load and JavaScript to execute
     print ("Waiting for the page to load")
@@ -70,14 +57,10 @@ def fetch_events():
         except Exception as e:
             print(f"Error extracting event details: {e}")
 
-    driver.quit()
     return new_events
 
 
-# Compare new events with previously stored events
-def check_for_new_events():
-    new_events = fetch_events()
-
+def get_stored_events():
     if os.path.exists(EVENTS_FILE):
         with open(EVENTS_FILE, 'r') as file:
             stored_events = json.load(file)
@@ -85,37 +68,30 @@ def check_for_new_events():
         stored_events = []
 
     stored_event_details = {(event['title'], event['date'], event['time']) for event in stored_events}
-    new_unique_events = [event for event in new_events if
+    return stored_events, stored_event_details
+
+
+def get_unique_new_events(scraped_events, stored_event_details):
+    new_unique_events = [event for event in scraped_events if
                          (event['title'], event['date'], event['time']) not in stored_event_details]
 
-    if new_unique_events:
-        send_email(new_unique_events)
-        with open(EVENTS_FILE, 'w') as file:
-            json.dump(stored_events + new_unique_events, file)
-    else:
-        print ("No new events found, skipping email notification")
-
-
-# Send an email notification
-def send_email(events):
-    print("Found new events, sending an email notification")
-    subject = "New Pickleball Events Posted at " + PICKLEBALL_LOCATION
-    body = "\n".join([f"{event['title']} on {event['date']} at {event['time']}" for event in events])
-
-    msg = MIMEMultipart()
-    msg['From'] = EMAIL
-    msg['To'] = RECIPIENT_EMAIL
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(EMAIL, PASSWORD)
-    text = msg.as_string()
-    server.sendmail(EMAIL, RECIPIENT_EMAIL, text)
-    print ("Email sent successfully")
-    server.quit()
+    return new_unique_events
 
 
 if __name__ == '__main__':
-    check_for_new_events()
+    load_dotenv()
+    URL = os.getenv('URL')
+    EVENTS_FILE = 'events.json'
+
+    driver = setup_driver()
+    new_events = get_active_community_events(driver, URL)
+    stored_events, stored_event_details = get_stored_events()
+    unique_new_events = get_unique_new_events(new_events, stored_event_details)
+
+    if unique_new_events:
+        send_email(unique_new_events)
+        with open(EVENTS_FILE, 'w') as file:
+            json.dump(stored_events + unique_new_events, file, indent=4)
+    else:
+        print("No new events found, skipping email notification")
+    driver.quit()
