@@ -5,15 +5,14 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-PICKLEBALL_LOCATION = os.getenv('PICKLEBALL_LOCATION')
 EMAIL = os.getenv('EMAIL')
 PASSWORD = os.getenv('PASSWORD')
 RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL')
 
 
-def send_email(events):
+def send_email(events, facility_name):
     print("Found new events, sending an email notification")
-    subject = "New Pickleball Events Posted at " + PICKLEBALL_LOCATION
+    subject = "New Pickleball Events Posted at " + facility_name
     body = "\n".join([f"{event['title']} on {event['date']} at {event['time']}" for event in events])
 
     msg = MIMEMultipart()
