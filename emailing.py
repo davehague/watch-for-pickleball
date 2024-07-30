@@ -10,10 +10,12 @@ PASSWORD = os.getenv('PASSWORD')
 RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL')
 
 
-def send_email(events, facility_name):
+def send_email(events, facility_name, url):
     print("Found new events, sending an email notification")
     subject = "New Pickleball Events Posted at " + facility_name
-    body = "\n".join([f"{event['title']} on {event['date']} at {event['time']}" for event in events])
+    body = f"The following new events have been discovered at {facility_name}:\n\n"
+    body += "\n".join([f"{event['title']} on {event['date']} at {event['time']}" for event in events])
+    body += f"\n\nView the events at {url}"
 
     msg = MIMEMultipart()
     msg['From'] = EMAIL
