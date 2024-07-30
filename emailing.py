@@ -10,6 +10,26 @@ PASSWORD = os.getenv('PASSWORD')
 RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL')
 
 
+def send_error_email(error_message):
+    print("An error occurred, sending an email notification")
+    subject = "Error in the Pickleball Event Scraper"
+    body = f"An error occurred while running the scraper:\n\n{error_message}"
+
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL
+    msg['To'] = RECIPIENT_EMAIL
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(EMAIL, PASSWORD)
+    text = msg.as_string()
+    server.sendmail(EMAIL, RECIPIENT_EMAIL, text)
+    print ("Error email sent successfully")
+    server.quit()
+
+
 def send_email(events, facility_name, url):
     print("Found new events, sending an email notification")
     subject = "New Pickleball Events Posted at " + facility_name

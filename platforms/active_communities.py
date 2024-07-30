@@ -41,9 +41,11 @@ def get_active_community_events(url):
 
             except Exception as e:
                 print(f"Error extracting event details: {e}")
+                raise e
 
         return new_events
     except Exception as e:
         print(f"Error fetching webpage content: {e}")
+        raise e
     finally:
         driver.quit()

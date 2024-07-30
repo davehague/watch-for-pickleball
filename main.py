@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 
-from emailing import send_email
+from emailing import send_email, send_error_email
 from platforms.active_communities import get_active_community_events
+from platforms.court_reserve import get_court_reserve_events
 from platforms.vermont_systems_webtrac import get_webtrac_events
-from selenium_helper import get_selenium_driver
 from persistent_data import PersistentData
 
 
@@ -27,7 +27,6 @@ if __name__ == '__main__':
     load_dotenv()
     try:
         db = PersistentData()
-
         facilities = db.get_facilities()
         for facility in facilities:
             platform = facility['platform']
@@ -39,6 +38,9 @@ if __name__ == '__main__':
             if platform == 'vermont_systems_webtrac':
                 print (f"Fetching events from {facility['name']}")
                 new_events = get_webtrac_events(facility['url'])
+            if platform == 'court_reserve':
+                print(f"Fetching events from {facility['name']}")
+                new_events = get_court_reserve_events(facility['url'], facility['username'], facility['password'])
 
             unique_new_events = check_for_unique_events(new_events, db)
 
@@ -49,6 +51,6 @@ if __name__ == '__main__':
                 print("No new events found, skipping email notification")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        send_error_email(e)
     finally:
         db.close()

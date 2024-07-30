@@ -1,5 +1,4 @@
 import sqlite3
-from hashlib import sha256
 
 
 class PersistentData:
@@ -56,7 +55,6 @@ class PersistentData:
 
     def insert_facility(self, name, url, platform, username=None, password=None):
         cursor = self.conn.cursor()
-        hashed_password = sha256(password.encode()).hexdigest() if password else None
         cursor.execute('''
             INSERT INTO facilities (name, url, platform, username, password) VALUES (?, ?, ?, ?, ?)
         ''', (name, url, platform, username, hashed_password))

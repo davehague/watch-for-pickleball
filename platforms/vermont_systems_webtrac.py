@@ -45,6 +45,7 @@ def get_webtrac_events(url):
 
     except Exception as e:
         print(f"Error extracting event details: {e}")
+        raise e
     finally:
         driver.quit()
 
