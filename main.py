@@ -1,22 +1,10 @@
 import os
-import json
-
 from dotenv import load_dotenv
 
 from emailing import send_email
 from platforms.active_communities import get_active_community_events
 from selenium_helper import get_selenium_driver
-
-
-def get_stored_events():
-    if os.path.exists(EVENTS_FILE):
-        with open(EVENTS_FILE, 'r') as file:
-            stored_events = json.load(file)
-    else:
-        stored_events = []
-
-    stored_event_details = {(event['title'], event['date'], event['time']) for event in stored_events}
-    return stored_events, stored_event_details
+from persistent_data import PersistentData
 
 
 def get_unique_new_events(scraped_events, stored_event_details):
@@ -28,18 +16,29 @@ def get_unique_new_events(scraped_events, stored_event_details):
 
 if __name__ == '__main__':
     load_dotenv()
-    URL = os.getenv('URL')
-    EVENTS_FILE = 'events.json'
+    db = PersistentData()
 
-    driver = get_selenium_driver()
-    new_events = get_active_community_events(driver, URL)
-    stored_events, stored_event_details = get_stored_events()
-    unique_new_events = get_unique_new_events(new_events, stored_event_details)
+    facilities = db.get_facilities()
+    for facility in facilities:
+        platform = facility['platform']
 
-    if unique_new_events:
-        send_email(unique_new_events)
-        with open(EVENTS_FILE, 'w') as file:
-            json.dump(stored_events + unique_new_events, file, indent=4)
-    else:
-        print("No new events found, skipping email notification")
-    driver.quit()
+        if platform == 'active_communities':
+            facility_id = facility['id']
+            url = facility['url']
+            driver = get_selenium_driver()
+            new_events = get_active_community_events(driver, url)
+
+            for event in new_events:
+                event['facilityId'] = facility_id
+
+            stored_events, stored_event_details = db.get_stored_events()
+            unique_new_events = get_unique_new_events(new_events, stored_event_details)
+
+            if unique_new_events:
+                send_email(unique_new_events)
+                db.insert_events(unique_new_events)
+            else:
+                print("No new events found, skipping email notification")
+
+            driver.quit()
+            db.close()

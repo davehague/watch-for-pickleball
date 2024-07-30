@@ -3,13 +3,6 @@
 This script checks a specific URL for new pickleball events and sends an email notification if new events are found. It runs daily and keeps track of previously found events to avoid duplicate notifications.
 
 ## Requirements
-
-The following Python packages are required:
-- `requests`
-- `beautifulsoup4`
-- `schedule`
-- `python-dotenv`
-
 You can install the required packages using the provided `requirements.txt` file:
 
 ```bash
@@ -66,6 +59,10 @@ python pickleball_event_checker.py
 
 The script will now run daily at the specified time and check for new pickleball events.
 
+### Scheduling (Windows)
+1. Set the environment variable `WATCH_PB_PROJECT_DIR` to the location of this project.
+2. Create a new task in Task Scheduler. Set Actions -> Program/Script to the `.bat` file in the root of this project.
+
 ## Script Details
 
 The script performs the following steps:
@@ -75,6 +72,7 @@ The script performs the following steps:
 3. Sends an email notification if new events are found.
 4. Stores the new events in a JSON file to avoid duplicate notifications.
 
-## Scheduling (Windows)
-1. Set the environment variable `WATCH_PB_PROJECT_DIR` to the location of this project.
-2. Create a new task in Task Scheduler. Set Actions -> Program/Script to the `.bat` file in the root of this project.
+### Data Persistence
+The app saves the events to a SQlite database.  The database is created in the same directory as the script.
+
+I use a UI browser called [SQLite Browser](https://sqlitebrowser.org/) to view the database, or you can use command line.

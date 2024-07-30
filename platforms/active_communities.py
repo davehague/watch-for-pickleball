@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 import time
 
+
 def get_active_community_events(driver, url):
     print ("Fetching the webpage content")
     driver.get(url)
