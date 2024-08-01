@@ -57,7 +57,7 @@ class PersistentData:
         cursor = self.conn.cursor()
         cursor.execute('''
             INSERT INTO facilities (name, url, platform, username, password) VALUES (?, ?, ?, ?, ?)
-        ''', (name, url, platform, username, hashed_password))
+        ''', (name, url, platform, username, password))
         self.conn.commit()
 
     def close(self):

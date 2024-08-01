@@ -53,4 +53,5 @@ if __name__ == '__main__':
     except Exception as e:
         send_error_email(e)
     finally:
-        db.close()
+        if db is not None:
+            db.close()
