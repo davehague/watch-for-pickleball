@@ -1,52 +1,68 @@
+import logging
 from selenium.webdriver.common.by import By
-import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from retrying import retry
 
 from selenium_helper import get_selenium_driver
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
 def get_webtrac_events(url):
-    driver = get_selenium_driver()
-    print("Fetching the webpage content")
-    driver.get(url)
-    driver.set_window_size(1920, 1080)
-
-    # Wait for the page to load and JavaScript to execute
-    print("Waiting for the page to load")
-    time.sleep(5)  # Adjust the sleep time as needed
-
-    print("Extracting the event details")
-    new_events = []
     try:
-        containers = driver.find_elements(By.CLASS_NAME, 'tablecollapsecontainer')
-        for container in containers:
-            container.click()
-            time.sleep(1)
+        with get_selenium_driver() as driver:
+            logging.info("Fetching the webpage content")
+            driver.get(url)
+            driver.set_window_size(1920, 1080)
 
-            header = container.find_element(By.TAG_NAME, 'h2').find_element(By.TAG_NAME, 'span').text
+            wait = WebDriverWait(driver, 10)
 
-            rows = container.find_elements(By.TAG_NAME, 'tr')
-            for row in rows:
-                cells = row.find_elements(By.TAG_NAME, 'td')
-                if len(cells) == 0:
-                    continue
+            logging.info("Waiting for the page to load")
+            wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'tablecollapsecontainer')))
 
-                description_cell = row.find_element(By.XPATH, './/td[@data-title="Description"]')
-                description = description_cell.find_element(By.TAG_NAME, 'a').text
+            logging.info("Extracting the event details")
+            new_events = []
 
-                dates_cell = row.find_element(By.XPATH, './/td[@data-title="Dates"]')
-                start_date = dates_cell.find_element(By.TAG_NAME, 'span').text
+            containers = driver.find_elements(By.CLASS_NAME, 'tablecollapsecontainer')
+            for container in containers:
+                container.click()
+                wait.until(EC.visibility_of_element_located((By.TAG_NAME, 'tr')))
 
-                times_cell = row.find_element(By.XPATH, './/td[@data-title="Times"]')
-                start_time = times_cell.find_element(By.TAG_NAME, 'span').text
+                header = container.find_element(By.TAG_NAME, 'h2').find_element(By.TAG_NAME, 'span').text
 
-                event_title = f"{header} - {description}"
-                print(f"Found an event: {event_title} on {start_date} at {start_time}")
-                new_events.append({'title': event_title, 'date': start_date, 'time': start_time})
+                rows = container.find_elements(By.TAG_NAME, 'tr')
+                for row in rows:
+                    cells = row.find_elements(By.TAG_NAME, 'td')
+                    if len(cells) == 0:
+                        continue
 
+                    try:
+                        description_cell = row.find_element(By.XPATH, './/td[@data-title="Description"]')
+                        description = description_cell.find_element(By.TAG_NAME, 'a').text
+
+                        dates_cell = row.find_element(By.XPATH, './/td[@data-title="Dates"]')
+                        start_date = dates_cell.find_element(By.TAG_NAME, 'span').text
+
+                        times_cell = row.find_element(By.XPATH, './/td[@data-title="Times"]')
+                        start_time = times_cell.find_element(By.TAG_NAME, 'span').text
+
+                        event_title = f"{header} - {description}"
+                        logging.info(f"Found an event: {event_title} on {start_date} at {start_time}")
+                        new_events.append({'title': event_title, 'date': start_date, 'time': start_time})
+                    except NoSuchElementException as e:
+                        logging.warning(f"Skipping a row due to missing element: {e}")
+                        continue
+
+        return new_events
+    except TimeoutException:
+        logging.error("Timeout waiting for page elements to load")
+        raise
+    except NoSuchElementException as e:
+        logging.error(f"Element not found: {e}")
+        raise
     except Exception as e:
-        print(f"Error extracting event details: {e}")
-        raise e
-    finally:
-        driver.quit()
-
-    return new_events
+        logging.error(f"Unexpected error: {e}")
+        raise

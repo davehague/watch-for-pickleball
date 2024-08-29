@@ -1,54 +1,63 @@
+import logging
+
 from selenium.webdriver.common.by import By
-import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from retrying import retry
+
 
 from selenium_helper import get_selenium_driver
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
 def get_court_reserve_events(url, username, password):
+    driver = None
     try:
-        driver = get_selenium_driver()
-        print("Fetching the webpage content")
-        driver.get(url)
-        time.sleep(1)
-        # driver.set_window_size(1920, 1080)
+        with get_selenium_driver() as driver:
+            logging.info("Fetching the webpage content")
+            driver.get(url)
 
-        username_input = driver.find_element(By.ID, 'UserNameOrEmail')
-        username_input.send_keys(username)
-        password_input = driver.find_element(By.ID, 'Password')
-        password_input.send_keys(password)
+            wait = WebDriverWait(driver, 10)
 
-        login_button = driver.find_element(By.TAG_NAME, 'button')
-        login_button.click()
-        time.sleep(1)
-        driver.get(url)
+            username_input = wait.until(EC.presence_of_element_located((By.ID, 'UserNameOrEmail')))
+            username_input.send_keys(username)
+            password_input = driver.find_element(By.ID, 'Password')
+            password_input.send_keys(password)
 
-        # Wait for the page to load and JavaScript to execute
-        print("Waiting for the page to load")
-        time.sleep(5)
+            login_button = driver.find_element(By.TAG_NAME, 'button')
+            login_button.click()
 
-        print("Extracting the event details")
-        new_events = []
+            driver.get(url)
 
-        containers = driver.find_elements(By.CLASS_NAME, 'fn-event-item')
-        for container in containers:
-            title = container.find_element(By.TAG_NAME, 'h4').text
-            date_and_time_span = container.find_element(By.CLASS_NAME, 'title-part')
-            date_and_time = date_and_time_span.find_element(By.TAG_NAME, 'a').text
+            logging.info("Extracting the event details")
+            new_events = []
 
-            split_values = date_and_time.split(',')
-            split_values = [value.strip() for value in split_values]
+            containers = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'fn-event-item')))
+            for container in containers:
+                title = container.find_element(By.TAG_NAME, 'h4').text
+                date_and_time_span = container.find_element(By.CLASS_NAME, 'title-part')
+                date_and_time = date_and_time_span.find_element(By.TAG_NAME, 'a').text
 
-            # Time is the last one
-            times = split_values.pop()
-            date = ', '.join(split_values)
+                split_values = date_and_time.split(',')
+                split_values = [value.strip() for value in split_values]
 
-            print(f"Found an event: {title} on {date} at {times}")
-            new_events.append({'title': title, 'date': date, 'time': times})
+                times = split_values.pop()
+                date = ', '.join(split_values)
 
+                logging.info(f"Found an event: {title} on {date} at {times}")
+                new_events.append({'title': title, 'date': date, 'time': times})
+
+    except TimeoutException:
+        logging.error("Timeout waiting for page elements to load")
+        raise
+    except NoSuchElementException as e:
+        logging.error(f"Element not found: {e}")
+        raise
     except Exception as e:
-        print(f"Error extracting event details: {e}")
-        raise e
-    finally:
-        driver.quit()
+        logging.error(f"Unexpected error: {e}")
+        raise
 
     return new_events
