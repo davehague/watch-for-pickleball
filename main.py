@@ -7,6 +7,7 @@ from platforms.court_reserve import get_court_reserve_events
 from platforms.vermont_systems_webtrac import get_webtrac_events
 from persistent_data import PersistentData
 from selenium_helper import cleanup_our_chrome_processes
+from datetime import datetime
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,6 +28,37 @@ def check_for_unique_events(new_events, db, facility_id):
     return get_unique_new_events(new_events, stored_event_details)
 
 
+def check_schedule(schedule: str) -> bool:
+    # Schedule string follows the following formats:
+    # Example: "Mon AM, Wed AM, Fri PM, Sun AM, Sun PM" (runs Monday morning, Wednesday morning, Friday evening, and both slots on Sunday).
+
+    if not schedule:
+        return True
+
+    # Normalize the schedule string
+    normalized_schedule = schedule.strip().lower()
+    schedule_items = [item.strip() for item in normalized_schedule.split(",")]
+
+    # Get the current day and time
+    now = datetime.now()
+    current_day = now.strftime("%a").lower()  # Short weekday name (e.g., mon, tue)
+    current_hour = now.hour
+    is_am_slot = current_hour < 12
+
+    for item in schedule_items:
+        if not item:
+            continue  # Skip empty items
+        parts = item.split()
+        day = parts[0] if len(parts) > 0 else ""
+        slots = parts[1:] if len(parts) > 1 else []
+
+        if day == current_day:
+            if (is_am_slot and "am" in slots) or (not is_am_slot and "pm" in slots):
+                return True
+
+    return False
+
+
 def main():
     load_dotenv()
     logging.info("Starting Pickleball Event Scraper")
@@ -37,6 +69,11 @@ def main():
             for facility in facilities:
                 platform = facility['platform']
                 logging.info(f"Fetching events from {facility['name']} ({platform})")
+
+                should_check_for_events = check_schedule(facility['schedule'])
+                if not should_check_for_events:
+                    print(f"Skipping {facility['name']} because it has a schedule and is not scheduled to run at this time")
+                    continue
 
                 new_events = []
                 try:

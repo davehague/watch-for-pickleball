@@ -60,7 +60,7 @@ class PersistentData:
     def get_facilities(self):
         try:
             cursor = self.conn.cursor()
-            cursor.execute('SELECT id, name, url, platform, username, password FROM facilities')
+            cursor.execute('SELECT id, name, url, platform, username, password, schedule FROM facilities')
             facilities = cursor.fetchall()
             return facilities
         except sqlite3.Error as e:
